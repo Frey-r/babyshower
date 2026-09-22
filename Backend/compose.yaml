@@ -10,6 +10,7 @@ services:
       GOOGLE_CLIENT_ID: ${GOOGLE_CLIENT_ID:-}
       GOOGLE_CLIENT_SECRET: ${GOOGLE_CLIENT_SECRET:-}
       GOOGLE_REDIRECT_URL: ${GOOGLE_REDIRECT_URL:-https://abby.ebachmann.dev/api/auth/callback}
+      ADMIN_USERS: ${ADMIN_USERS:-}
       ADMIN_EMAILS: ${ADMIN_EMAILS:-}
     ports:
       - "127.0.0.1:${APP_PORT:-8080}:8080"
