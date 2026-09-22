@@ -46,8 +46,10 @@ type Config struct {
 //	ADMIN_USERS                            -> "email:rol,email:rol" (rol por usuario)
 //	ADMIN_EMAILS                           -> "email,email" (compatibilidad; rol=admin)
 //
-// Devuelve (nil, nil) si OAuth no está configurado (admin abierto, sólo
-// para el setup inicial).
+// Devuelve (nil, nil) si OAuth no está configurado (sin credenciales de
+// Google): /admin queda abierto, útil durante el setup inicial.
+// ADMIN_USERS / ADMIN_EMAILS solos se aceptan como preconfiguración —
+// el gate se activará automáticamente cuando se rellenen las credenciales.
 func Load(getenv func(string) string) (*Config, error) {
 	cid := getenv("GOOGLE_CLIENT_ID")
 	cs := getenv("GOOGLE_CLIENT_SECRET")
@@ -81,14 +83,13 @@ func Load(getenv func(string) string) (*Config, error) {
 		}
 	}
 
-	if cid == "" && cs == "" && len(users) == 0 {
+	// OAuth sólo se considera activo si las credenciales están presentes.
+	// ADMIN_USERS sin credenciales = preconfiguración, admin abierto.
+	if cid == "" || cs == "" {
 		return nil, nil
 	}
-	if cid == "" || cs == "" {
-		return nil, errors.New("GOOGLE_CLIENT_ID y GOOGLE_CLIENT_SECRET son requeridos cuando OAuth está habilitado")
-	}
 	if len(users) == 0 {
-		return nil, errors.New("ADMIN_USERS o ADMIN_EMAILS debe contener al menos un usuario")
+		return nil, errors.New("ADMIN_USERS o ADMIN_EMAILS debe contener al menos un correo cuando OAuth está habilitado")
 	}
 	if ru == "" {
 		ru = "http://localhost:8080/api/auth/callback"
