@@ -77,6 +77,26 @@ import '../styles/global.css';
       <div class="gift-grid" id="gift-grid"></div>
     </div>
 
+    <div class="wrap" style="padding-top:28px;">
+      <div class="bank-card">
+        <h3 class="section-title" style="font-size:clamp(34px,6vw,54px);">Otra forma de ayudar</h3>
+        <p class="section-sub">
+          Sabemos que no siempre es fácil elegir un regalo, así que si prefieres, puedes depositar
+          directo en la cuenta de Abby. Con eso queremos ir comprando lo que necesitemos para
+          recibirla bien estos primeros meses.
+        </p>
+        <button type="button" class="bank-copy" id="bank-copy" aria-label="Copiar datos de la cuenta">
+          <span class="bank-name">Camelia Isabel Andrea Gonzalez Olivares</span>
+          <span class="bank-line"><em>RUT</em> 19.253.068-7</span>
+          <span class="bank-line"><em>Tipo</em> Cuenta Vista</span>
+          <span class="bank-line"><em>Número</em> 0 070 05 39447 8</span>
+          <span class="bank-line"><em>Banco</em> Banco Santander</span>
+          <span class="bank-line"><em>Correo</em> camelia.gonzalez.olivares@gmail.com</span>
+          <span class="bank-hint">Toca para copiar</span>
+        </button>
+      </div>
+    </div>
+
     <div id="confirmar" class="wrap section-list" style="padding-top:48px;">
       <div class="rsvp-panel">
         <h3 class="section-title" style="font-size:clamp(34px,6vw,54px);">¿Nos acompañas?</h3>
@@ -401,6 +421,33 @@ import '../styles/global.css';
         } catch {
           msg.className = 'form-msg err';
           msg.textContent = 'No se pudo enviar, intenta de nuevo.';
+        }
+      });
+
+      const BANK_TEXT = [
+        'Camelia Isabel Andrea Gonzalez Olivares',
+        '19.253.068-7',
+        'Cuenta Vista',
+        '0 070 05 39447 8',
+        'Banco Santander',
+        'camelia.gonzalez.olivares@gmail.com',
+      ].join('\n');
+
+      document.getElementById('bank-copy')?.addEventListener('click', async () => {
+        try {
+          await navigator.clipboard.writeText(BANK_TEXT);
+          toast('Datos copiados');
+        } catch {
+          const ta = document.createElement('textarea');
+          ta.value = BANK_TEXT;
+          ta.setAttribute('readonly', '');
+          ta.style.position = 'fixed';
+          ta.style.left = '-9999px';
+          document.body.append(ta);
+          ta.select();
+          const ok = document.execCommand('copy');
+          ta.remove();
+          toast(ok ? 'Datos copiados' : 'No se pudo copiar');
         }
       });
 
