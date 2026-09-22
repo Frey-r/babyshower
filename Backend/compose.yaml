@@ -1,0 +1,46 @@
+services:
+  app:
+    container_name: babyshower
+    build:
+      context: ..
+      dockerfile: Backend/Dockerfile
+    environment:
+      DATABASE_URL: postgres://babyshower:${DB_PASSWORD:?DB_PASSWORD requerido (ver .env)}@db:5432/babyshower?sslmode=disable
+      PORT: "8080"
+      ADMIN_CERT_FINGERPRINTS: ${ADMIN_CERT_FINGERPRINTS:-}
+    ports:
+      - "127.0.0.1:${APP_PORT:-8080}:8080"
+    depends_on:
+      db:
+        condition: service_healthy
+    networks:
+      default: {}
+      cloudflared:
+        aliases:
+          - babyshower
+    restart: unless-stopped
+
+  db:
+    image: postgres:16-alpine
+    environment:
+      POSTGRES_USER: babyshower
+      POSTGRES_PASSWORD: ${DB_PASSWORD:?DB_PASSWORD requerido (ver .env)}
+      POSTGRES_DB: babyshower
+    volumes:
+      - pgdata:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U babyshower -d babyshower"]
+      interval: 5s
+      timeout: 3s
+      retries: 12
+    networks:
+      - default
+    restart: unless-stopped
+
+volumes:
+  pgdata:
+
+networks:
+  cloudflared:
+    external: true
+    name: ${CLOUDFLARED_NETWORK:-cloudflared}

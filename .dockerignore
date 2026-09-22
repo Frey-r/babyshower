@@ -1,0 +1,11 @@
+.git
+.gitignore
+front maqueta
+Front/node_modules
+Front/dist
+Front/.astro
+Backend/internal/web/dist
+Backend/compose.yaml
+Backend/.env
+Backend/.env.*
+**/*.md

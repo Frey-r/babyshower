@@ -1,0 +1,23 @@
+# secrets / entorno
+.env
+.env.*
+!.env.example
+
+# go
+Backend/server.exe
+Backend/server
+Backend/internal/web/dist/*
+!Backend/internal/web/dist/.placeholder
+
+# node / astro
+Front/node_modules/
+Front/dist/
+Front/.astro/
+
+# sistema
+*.log
+.DS_Store
+Thumbs.db
+
+# mockup original (solo referencia)
+front maqueta

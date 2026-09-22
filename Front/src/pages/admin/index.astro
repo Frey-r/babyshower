@@ -1,0 +1,356 @@
+---
+import '../../styles/global.css';
+---
+
+<!doctype html>
+<html lang="es">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Admin · Baby Shower Abby</title>
+    <meta name="robots" content="noindex" />
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link
+      href="https://fonts.googleapis.com/css2?family=EB+Garamond:ital,wght@0,400;0,500;0,600;1,400&family=Quicksand:wght@500;600;700&display=swap"
+      rel="stylesheet"
+    />
+    <style>
+      body { background: var(--bg); font-family: 'Quicksand', sans-serif; color: var(--brown); }
+      .admin-wrap { max-width: 980px; margin: 0 auto; padding: 28px 22px 60px; }
+      .admin-head { display: flex; align-items: baseline; justify-content: space-between; flex-wrap: wrap; gap: 10px; margin-bottom: 22px; }
+      .admin-head h1 { margin: 0; font-family: 'Pinyon Script', cursive; font-weight: 400; color: var(--wine); font-size: 44px; line-height: 1; }
+      .admin-head a { font-size: 14px; font-weight: 600; }
+
+      .tabs { display: flex; gap: 8px; flex-wrap: wrap; margin-bottom: 22px; }
+      .tab-btn {
+        font-family: 'Quicksand', sans-serif; font-weight: 700; font-size: 14px;
+        padding: 10px 18px; border-radius: 999px; border: 1px solid var(--card-border);
+        background: var(--card); color: var(--brown-soft); cursor: pointer;
+      }
+      .tab-btn.active { background: var(--wine); border-color: var(--wine); color: var(--card); }
+
+      .panel { display: none; }
+      .panel.active { display: block; }
+
+      .card {
+        background: var(--card); border: 1px solid var(--card-border); border-radius: 6px;
+        padding: 20px; margin-bottom: 16px;
+      }
+
+      table { width: 100%; border-collapse: collapse; font-size: 14.5px; }
+      th {
+        text-align: left; font-weight: 700; font-size: 12px; letter-spacing: .08em;
+        text-transform: uppercase; color: var(--brown-soft); padding: 8px 10px;
+        border-bottom: 1px solid var(--line);
+      }
+      td { padding: 10px; border-bottom: 1px solid var(--card-border); vertical-align: top; }
+      tr:last-child td { border-bottom: none; }
+      .table-wrap { overflow-x: auto; }
+
+      .num-badge { font-family: 'Pinyon Script', cursive; font-size: 22px; color: var(--sand); }
+      .yes { color: #4A7A52; font-weight: 700; }
+      .no { color: var(--wine); font-weight: 700; }
+      .muted { color: var(--brown-soft); font-style: italic; }
+
+      .btn {
+        font-family: 'Quicksand', sans-serif; font-weight: 700; font-size: 13.5px;
+        border-radius: 999px; padding: 10px 20px; cursor: pointer; border: none;
+      }
+      .btn-primary { background: var(--wine); color: var(--card); }
+      .btn-primary:hover { background: var(--wine-dark); }
+      .btn-secondary { background: transparent; color: var(--wine); border: 1px solid var(--rose-soft); }
+      .btn-danger { background: transparent; color: var(--wine); border: 1px solid var(--rose-soft); }
+      .btn-danger:hover { background: #F7E1E3; }
+      .btn-sm { padding: 6px 12px; font-size: 12.5px; }
+
+      form.admin-form { display: flex; flex-direction: column; gap: 14px; max-width: 520px; }
+      form.admin-form label {
+        display: flex; flex-direction: column; gap: 6px; font-weight: 600; font-size: 12.5px;
+        letter-spacing: .06em; text-transform: uppercase; color: var(--brown-soft);
+      }
+      form.admin-form input, form.admin-form textarea {
+        font-family: 'EB Garamond', serif; font-size: 17px; color: var(--brown-mid);
+        background: #fff; border: 1px solid var(--card-border); border-radius: 4px; padding: 11px 13px;
+      }
+      form.admin-form textarea { resize: vertical; min-height: 60px; }
+      .form-row { display: flex; gap: 14px; flex-wrap: wrap; }
+      .form-row > label { flex: 1; min-width: 140px; }
+
+      .stats { display: flex; gap: 14px; flex-wrap: wrap; margin-bottom: 16px; }
+      .stat {
+        flex: 1; min-width: 140px; background: var(--panel); border-radius: 6px; padding: 16px 18px;
+        text-align: center;
+      }
+      .stat .n { font-family: 'EB Garamond', serif; font-size: 34px; color: var(--wine); line-height: 1; }
+      .stat .l { font-size: 12px; font-weight: 700; letter-spacing: .08em; text-transform: uppercase; color: var(--brown-soft); margin-top: 4px; }
+
+      .modal-backdrop {
+        position: fixed; inset: 0; background: rgba(92,64,56,.45); display: flex;
+        align-items: center; justify-content: center; padding: 22px; z-index: 50;
+      }
+      .modal {
+        background: var(--card); border: 1px solid var(--card-border); border-radius: 6px;
+        box-shadow: 0 24px 60px rgba(122,31,43,.22); max-width: 460px; width: 100%;
+        padding: 26px; max-height: 90vh; overflow-y: auto;
+      }
+      .modal h4 { margin: 0 0 16px; font-family: 'Pinyon Script', cursive; font-weight: 400; color: var(--wine); font-size: 32px; }
+
+      .empty { text-align: center; color: var(--brown-soft); font-style: italic; padding: 18px; }
+    </style>
+  </head>
+  <body>
+    <div class="admin-wrap">
+      <div class="admin-head">
+        <h1>Admin · Abby</h1>
+        <a href="/">← Volver a la invitación</a>
+      </div>
+
+      <div class="tabs">
+        <button class="tab-btn active" data-tab="regalos">Regalos</button>
+        <button class="tab-btn" data-tab="confirmaciones">Confirmaciones</button>
+        <button class="tab-btn" data-tab="evento">Evento</button>
+      </div>
+
+      <!-- REGALOS -->
+      <section class="panel active" id="panel-regalos">
+        <div class="card">
+          <button class="btn btn-primary" id="btn-new-gift">+ Agregar regalo</button>
+        </div>
+        <div class="card table-wrap">
+          <table>
+            <thead>
+              <tr><th>#</th><th>Regalo</th><th>Nota</th><th>Reservado por</th><th>Teléfono</th><th></th></tr>
+            </thead>
+            <tbody id="gifts-body"></tbody>
+          </table>
+          <div class="empty" id="gifts-empty" style="display:none;">Aún no hay regalos</div>
+        </div>
+      </section>
+
+      <!-- CONFIRMACIONES -->
+      <section class="panel" id="panel-confirmaciones">
+        <div class="stats" id="rsvp-stats"></div>
+        <div class="card table-wrap">
+          <table>
+            <thead>
+              <tr><th>Nombre</th><th>Teléfono</th><th>Asiste</th><th>Acomp.</th><th>Mensaje</th><th>Fecha</th></tr>
+            </thead>
+            <tbody id="rsvps-body"></tbody>
+          </table>
+          <div class="empty" id="rsvps-empty" style="display:none;">Aún no hay confirmaciones</div>
+        </div>
+      </section>
+
+      <!-- EVENTO -->
+      <section class="panel" id="panel-evento">
+        <div class="card">
+          <form class="admin-form" id="event-form">
+            <label>Fecha del evento
+              <input type="date" name="event_date" required />
+            </label>
+            <div class="form-row">
+              <label>Hora (vacío = por confirmar)
+                <input type="time" name="event_time" />
+              </label>
+              <label>Límite para confirmar
+                <input type="date" name="rsvp_deadline" />
+              </label>
+            </div>
+            <label>Lugar
+              <textarea name="place" rows="2" required></textarea>
+            </label>
+            <div>
+              <button class="btn btn-primary" type="submit">Guardar cambios</button>
+              <span id="event-msg" style="margin-left:10px; font-weight:600; color:#4A7A52;"></span>
+            </div>
+          </form>
+        </div>
+      </section>
+    </div>
+
+    <div id="modal-root"></div>
+
+    <script>
+      const $ = (s: string) => document.querySelector(s) as HTMLElement;
+
+      // tabs
+      document.querySelectorAll<HTMLButtonElement>('.tab-btn').forEach((btn) => {
+        btn.addEventListener('click', () => {
+          document.querySelectorAll('.tab-btn').forEach((b) => b.classList.remove('active'));
+          document.querySelectorAll('.panel').forEach((p) => p.classList.remove('active'));
+          btn.classList.add('active');
+          $('#panel-' + btn.dataset.tab).classList.add('active');
+        });
+      });
+
+      async function api(path: string, opts: RequestInit = {}) {
+        const res = await fetch(path, {
+          headers: { 'Content-Type': 'application/json' },
+          ...opts,
+        });
+        if (!res.ok) throw new Error('HTTP ' + res.status);
+        if (res.status === 204) return null;
+        return res.json();
+      }
+
+      const esc = (s: unknown) =>
+        String(s ?? '').replace(/[&<>"']/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c] as string));
+
+      // ---------- regalos ----------
+      type AdminGift = {
+        id: number; position: number; title: string; note: string; url: string | null;
+        claim: { guest_name: string; guest_phone: string; claimed_at: string } | null;
+      };
+
+      async function loadGifts() {
+        const gifts: AdminGift[] = await api('/api/admin/gifts');
+        const body = $('#gifts-body');
+        body.innerHTML = '';
+        $('#gifts-empty').style.display = gifts.length ? 'none' : 'block';
+        for (const g of gifts) {
+          const tr = document.createElement('tr');
+          tr.innerHTML = `
+            <td><span class="num-badge">${esc(String(g.position).padStart(2, '0'))}</span></td>
+            <td style="font-weight:600;">${esc(g.title)}${
+              g.url ? `<br><a href="${esc(g.url)}" target="_blank" rel="noopener" style="font-size:12px;">ver producto ↗</a>` : ''
+            }</td>
+            <td class="muted">${esc(g.note) || '—'}</td>
+            <td>${g.claim ? `<span class="yes">✓ ${esc(g.claim.guest_name)}</span>` : '<span class="muted">disponible</span>'}</td>
+            <td>${g.claim ? esc(g.claim.guest_phone) : '—'}</td>
+            <td style="white-space:nowrap;">
+              <button class="btn btn-secondary btn-sm" data-edit="${g.id}">Editar</button>
+              <button class="btn btn-danger btn-sm" data-del="${g.id}">Eliminar</button>
+            </td>`;
+          body.append(tr);
+        }
+        body.querySelectorAll<HTMLButtonElement>('[data-edit]').forEach((b) =>
+          b.addEventListener('click', () => openGiftModal(Number(b.dataset.edit))));
+        body.querySelectorAll<HTMLButtonElement>('[data-del]').forEach((b) =>
+          b.addEventListener('click', async () => {
+            if (!confirm('¿Eliminar este regalo de la lista?')) return;
+            try {
+              await api(`/api/admin/gifts/${b.dataset.del}`, { method: 'DELETE' });
+              await loadGifts();
+            } catch { alert('No se pudo eliminar'); }
+          }));
+      }
+
+      function openGiftModal(id: number | null) {
+        api('/api/admin/gifts').then((gifts: AdminGift[]) => {
+          const g = id === null ? null : gifts.find((x) => x.id === id);
+          if (id !== null && !g) return;
+          const root = $('#modal-root');
+          root.innerHTML = `
+            <div class="modal-backdrop">
+              <div class="modal">
+                <h4>${g ? 'Editar regalo' : 'Nuevo regalo'}</h4>
+                <form class="admin-form" id="gift-form">
+                  <label>Título
+                    <input type="text" name="title" required maxlength="160" value="${esc(g?.title ?? '')}" />
+                  </label>
+                  <label>Nota
+                    <input type="text" name="note" maxlength="200" value="${esc(g?.note ?? '')}" />
+                  </label>
+                  <label>URL del producto (opcional)
+                    <input type="url" name="url" placeholder="https://..." value="${esc(g?.url ?? '')}" />
+                  </label>
+                  <label>Orden
+                    <input type="number" name="position" min="1" required value="${g?.position ?? (gifts.length + 1)}" />
+                  </label>
+                  <div style="display:flex; gap:10px;">
+                    <button type="button" class="btn btn-secondary" id="gift-cancel">Cancelar</button>
+                    <button type="submit" class="btn btn-primary">Guardar</button>
+                  </div>
+                </form>
+              </div>
+            </div>`;
+          const backdrop = root.querySelector('.modal-backdrop') as HTMLElement;
+          backdrop.addEventListener('click', (e) => { if (e.target === backdrop) root.innerHTML = ''; });
+          ($('#gift-cancel') as HTMLButtonElement).addEventListener('click', () => (root.innerHTML = ''));
+          ($('#gift-form') as HTMLFormElement).addEventListener('submit', async (e) => {
+            e.preventDefault();
+            const fd = new FormData(e.target as HTMLFormElement);
+            const payload = {
+              title: String(fd.get('title')).trim(),
+              note: String(fd.get('note')).trim(),
+              url: String(fd.get('url')).trim() || null,
+              position: Number(fd.get('position')) || 1,
+            };
+            try {
+              if (g) await api(`/api/admin/gifts/${g.id}`, { method: 'PUT', body: JSON.stringify(payload) });
+              else await api('/api/admin/gifts', { method: 'POST', body: JSON.stringify(payload) });
+              root.innerHTML = '';
+              await loadGifts();
+            } catch { alert('No se pudo guardar'); }
+          });
+        });
+      }
+      $('#btn-new-gift').addEventListener('click', () => openGiftModal(null));
+
+      // ---------- confirmaciones ----------
+      type Rsvp = {
+        id: number; name: string; phone: string | null; attending: boolean;
+        guests: number; message: string | null; created_at: string;
+      };
+
+      async function loadRsvps() {
+        const rsvps: Rsvp[] = await api('/api/admin/rsvps');
+        const body = $('#rsvps-body');
+        body.innerHTML = '';
+        $('#rsvps-empty').style.display = rsvps.length ? 'none' : 'block';
+        const going = rsvps.filter((r) => r.attending);
+        const total = going.reduce((n, r) => n + 1 + r.guests, 0);
+        $('#rsvp-stats').innerHTML = `
+          <div class="stat"><div class="n">${going.length}</div><div class="l">Confirmaron</div></div>
+          <div class="stat"><div class="n">${total}</div><div class="l">Personas en total</div></div>
+          <div class="stat"><div class="n">${rsvps.filter((r) => !r.attending).length}</div><div class="l">No podrán</div></div>`;
+        for (const r of rsvps) {
+          const tr = document.createElement('tr');
+          const d = new Date(r.created_at);
+          tr.innerHTML = `
+            <td style="font-weight:600;">${esc(r.name)}</td>
+            <td>${esc(r.phone) || '—'}</td>
+            <td>${r.attending ? '<span class="yes">Sí</span>' : '<span class="no">No</span>'}</td>
+            <td>${r.attending ? esc(r.guests) : '—'}</td>
+            <td class="muted">${esc(r.message) || '—'}</td>
+            <td class="muted" style="white-space:nowrap;">${d.toLocaleDateString('es-CL')}</td>`;
+          body.append(tr);
+        }
+      }
+
+      // ---------- evento ----------
+      async function loadEvent() {
+        const ev = await api('/api/admin/event');
+        const form = $('#event-form') as HTMLFormElement;
+        (form.elements.namedItem('event_date') as HTMLInputElement).value = ev.event_date;
+        (form.elements.namedItem('event_time') as HTMLInputElement).value = ev.event_time || '';
+        (form.elements.namedItem('rsvp_deadline') as HTMLInputElement).value = ev.rsvp_deadline || '';
+        (form.elements.namedItem('place') as HTMLTextAreaElement).value = ev.place;
+      }
+
+      ($('#event-form') as HTMLFormElement).addEventListener('submit', async (e) => {
+        e.preventDefault();
+        const fd = new FormData(e.target as HTMLFormElement);
+        const msg = $('#event-msg');
+        try {
+          await api('/api/admin/event', {
+            method: 'PUT',
+            body: JSON.stringify({
+              event_date: fd.get('event_date'),
+              event_time: fd.get('event_time') || null,
+              rsvp_deadline: fd.get('rsvp_deadline') || null,
+              place: String(fd.get('place')).trim(),
+            }),
+          });
+          msg.textContent = '✓ Guardado';
+          setTimeout(() => (msg.textContent = ''), 2500);
+        } catch { alert('No se pudo guardar'); }
+      });
+
+      loadGifts();
+      loadRsvps();
+      loadEvent();
+    </script>
+  </body>
+</html>

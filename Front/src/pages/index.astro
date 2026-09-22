@@ -1,0 +1,411 @@
+---
+import '../styles/global.css';
+---
+
+<!doctype html>
+<html lang="es">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Baby Shower · Abby Bachmann González</title>
+    <meta name="description" content="Celebra la llegada de Abby — 03 de octubre de 2026" />
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link
+      href="https://fonts.googleapis.com/css2?family=Pinyon+Script&family=EB+Garamond:ital,wght@0,400;0,500;0,600;1,400&family=Quicksand:wght@500;600;700&display=swap"
+      rel="stylesheet"
+    />
+  </head>
+  <body>
+    <div class="band-top"></div>
+
+    <div class="wrap">
+      <p class="kicker" id="event-kicker">03 · octubre · 2026</p>
+      <h1 class="title">Baby Shower</h1>
+      <h2 class="subtitle">Abby está en camino</h2>
+
+      <p class="intro">Celebra esta nueva etapa con nosotros:</p>
+      <p class="names">Camelia y Eduardo</p>
+
+      <div class="event-card">
+        <div class="event-date">
+          <span class="month" id="event-month">octubre</span>
+          <span class="day" id="event-day">03</span>
+        </div>
+        <div class="event-sep"></div>
+        <div class="event-info">
+          <p class="place" id="event-place">Av. Almirante Blanco Encalada #1723</p>
+          <div style="height:1px; background:var(--line);"></div>
+          <p class="time" id="event-time">Hora por confirmar</p>
+          <a
+            class="map-link"
+            id="event-map"
+            href="https://www.google.com/maps/search/?api=1&query=Av.+Almirante+Blanco+Encalada+1723"
+            target="_blank"
+            rel="noopener">Cómo llegar ↗</a
+          >
+        </div>
+      </div>
+
+      <div class="countdown" id="countdown" aria-label="Cuenta regresiva">
+        <div><div class="num" id="cd-days">–</div><div class="lbl">días</div></div>
+        <div><div class="num" id="cd-hours">–</div><div class="lbl">horas</div></div>
+        <div><div class="num" id="cd-mins">–</div><div class="lbl">minutos</div></div>
+      </div>
+
+      <div class="cta-row">
+        <a class="btn btn-primary" href="#confirmar">Confirmar asistencia</a>
+        <a class="btn btn-secondary" href="#lista">Ver lista de sugerencias</a>
+      </div>
+
+      <div class="hero-img">
+        <img src="/imagen.png" alt="Invitación Baby Shower de Abby" />
+      </div>
+    </div>
+
+    <div class="band-mid"></div>
+
+    <div id="lista" class="wrap section-list">
+      <div style="text-align:center; margin-bottom:34px;">
+        <h3 class="section-title">Lista de sugerencias</h3>
+        <p class="section-sub">
+          Ideas para acompañar la llegada de Abby. Lo más importante es que estés ahí — esto es solo
+          una guía por si quieres regalar algo.
+        </p>
+      </div>
+
+      <div class="gift-grid" id="gift-grid"></div>
+    </div>
+
+    <div id="confirmar" class="wrap section-list" style="padding-top:48px;">
+      <div class="rsvp-panel">
+        <h3 class="section-title" style="font-size:clamp(34px,6vw,54px);">¿Nos acompañas?</h3>
+        <p class="section-sub" id="rsvp-deadline">
+          Confírmanos antes del 26 de septiembre para organizar todo con calma.
+        </p>
+
+        <form class="rsvp-form" id="rsvp-form">
+          <label
+            >Nombre
+            <input type="text" name="name" required maxlength="120" autocomplete="name" />
+          </label>
+          <label
+            >Teléfono (opcional)
+            <input type="tel" name="phone" maxlength="30" autocomplete="tel" />
+          </label>
+          <label>¿Asistirás?
+            <span class="rsvp-radios">
+              <label><input type="radio" name="attending" value="yes" checked />Sí, ahí estaré</label>
+              <label><input type="radio" name="attending" value="no" />Esta vez no podré</label>
+            </span>
+          </label>
+          <label
+            >Acompañantes
+            <input
+              type="number"
+              name="guests"
+              min="0"
+              max="10"
+              value="0"
+              inputmode="numeric"
+            />
+          </label>
+          <label
+            >Mensaje (opcional)
+            <textarea name="message" maxlength="500" rows="3" placeholder="Un cariño para Camelia y Eduardo 💕"></textarea>
+          </label>
+          <input class="hp" type="text" name="website" tabindex="-1" autocomplete="off" />
+          <div><button class="btn btn-primary" type="submit">Enviar confirmación</button></div>
+          <p class="form-msg" id="rsvp-msg" aria-live="polite"></p>
+        </form>
+      </div>
+      <p class="closing">Te esperamos con el corazón lleno</p>
+    </div>
+
+    <div class="band-bottom"></div>
+
+    <div id="modal-root"></div>
+    <div id="toast" role="status"></div>
+
+    <script>
+      const $ = (sel) => document.querySelector(sel);
+
+      const TOKENS_KEY = 'abby-shower-claims';
+      function loadTokens(): Record<string, string> {
+        try { return JSON.parse(localStorage.getItem(TOKENS_KEY) || '{}'); } catch { return {}; }
+      }
+      function saveTokens(t: Record<string, string>) {
+        try { localStorage.setItem(TOKENS_KEY, JSON.stringify(t)); } catch {}
+      }
+
+      function toast(msg: string) {
+        const el = $('#toast') as HTMLElement;
+        el.textContent = msg;
+        el.classList.add('show');
+        setTimeout(() => el.classList.remove('show'), 3200);
+      }
+
+      // ---------- evento ----------
+      type Event = {
+        event_date: string;
+        event_time: string | null;
+        place: string;
+        rsvp_deadline: string | null;
+      };
+
+      let eventTarget: number | null = null;
+
+      async function loadEvent() {
+        try {
+          const res = await fetch('/api/event');
+          const ev: Event = await res.json();
+          const d = new Date(ev.event_date + 'T12:00:00');
+          const month = new Intl.DateTimeFormat('es-CL', { month: 'long' }).format(d);
+          const day = d.getDate();
+          const year = d.getFullYear();
+          $('#event-kicker')!.textContent = `${String(day).padStart(2, '0')} · ${month} · ${year}`;
+          $('#event-month')!.textContent = month;
+          $('#event-day')!.textContent = String(day).padStart(2, '0');
+          if (ev.place) {
+            $('#event-place')!.textContent = ev.place;
+            ($('#event-map') as HTMLAnchorElement).href =
+              'https://www.google.com/maps/search/?api=1&query=' + encodeURIComponent(ev.place);
+          }
+          if (ev.event_time) {
+            const [h, m] = ev.event_time.split(':').map(Number);
+            const hh = String(h).padStart(2, '0');
+            const mm = String(m ?? 0).padStart(2, '0');
+            $('#event-time')!.textContent = `${hh}:${mm} hrs`;
+          }
+          if (ev.rsvp_deadline) {
+            const dl = new Date(ev.rsvp_deadline + 'T12:00:00');
+            const dlTxt = new Intl.DateTimeFormat('es-CL', { day: 'numeric', month: 'long' }).format(dl);
+            $('#rsvp-deadline')!.textContent =
+              `Confírmanos antes del ${dlTxt} para organizar todo con calma.`;
+          }
+          const t = new Date(ev.event_date + 'T' + (ev.event_time || '23:59') + ':00');
+          eventTarget = isNaN(t.getTime()) ? null : t.getTime();
+          tick();
+        } catch {}
+      }
+
+      function tick() {
+        if (eventTarget === null) return;
+        const diff = Math.max(0, eventTarget - Date.now());
+        $('#cd-days')!.textContent = String(Math.floor(diff / 86400000));
+        $('#cd-hours')!.textContent = String(Math.floor(diff / 3600000) % 24);
+        $('#cd-mins')!.textContent = String(Math.floor(diff / 60000) % 60);
+      }
+      setInterval(tick, 30000);
+
+      // ---------- regalos ----------
+      type Gift = {
+        id: number;
+        position: number;
+        title: string;
+        note: string;
+        url: string | null;
+        claimed: boolean;
+      };
+
+      let gifts: Gift[] = [];
+
+      async function loadGifts() {
+        try {
+          const res = await fetch('/api/gifts');
+          gifts = await res.json();
+          renderGifts();
+        } catch {
+          $('#gift-grid')!.innerHTML =
+            '<p style="grid-column:1/-1; text-align:center; color:var(--brown-soft); font-style:italic;">No se pudo cargar la lista de regalos 😢</p>';
+        }
+      }
+
+      function renderGifts() {
+        const tokens = loadTokens();
+        const grid = $('#gift-grid') as HTMLElement;
+        grid.innerHTML = '';
+        for (const g of gifts) {
+          const mine = !!tokens[g.id];
+          const card = document.createElement('div');
+          card.className = 'gift-card' + (g.claimed && !mine ? ' claimed-other' : '');
+          card.dataset.id = String(g.id);
+
+          const num = document.createElement('span');
+          num.className = 'gift-num';
+          num.textContent = String(g.position).padStart(2, '0');
+
+          const title = document.createElement('p');
+          title.className = 'gift-title';
+          title.textContent = g.title;
+
+          card.append(num, title);
+
+          if (g.note) {
+            const note = document.createElement('p');
+            note.className = 'gift-note';
+            note.textContent = g.note;
+            card.append(note);
+          }
+
+          if (g.url) {
+            const link = document.createElement('a');
+            link.className = 'gift-link';
+            link.href = g.url;
+            link.target = '_blank';
+            link.rel = 'noopener';
+            link.textContent = 'Ver producto ↗';
+            card.append(link);
+          } else {
+            const spacer = document.createElement('div');
+            spacer.style.marginTop = 'auto';
+            card.append(spacer);
+          }
+
+          const action = document.createElement('div');
+          if (g.claimed && mine) {
+            const btn = document.createElement('button');
+            btn.type = 'button';
+            btn.className = 'gift-btn mine';
+            btn.textContent = '✓ Lo regalo yo';
+            btn.addEventListener('click', () => releaseGift(g.id));
+            action.append(btn);
+          } else if (g.claimed) {
+            const span = document.createElement('span');
+            span.className = 'gift-taken';
+            span.textContent = 'Ya lo regalan ✨';
+            action.append(span);
+          } else {
+            const btn = document.createElement('button');
+            btn.type = 'button';
+            btn.className = 'gift-btn';
+            btn.textContent = 'Marcar como mío';
+            btn.addEventListener('click', () => openClaimModal(g));
+            action.append(btn);
+          }
+          card.append(action);
+          grid.append(card);
+        }
+      }
+
+      function openClaimModal(gift: Gift) {
+        const root = $('#modal-root') as HTMLElement;
+        root.innerHTML = `
+          <div class="modal-backdrop">
+            <div class="modal" role="dialog" aria-modal="true" aria-labelledby="modal-title">
+              <h4 id="modal-title">¿Lo regalas tú?</h4>
+              <p>${gift.title.replace(/</g, '&lt;')}</p>
+              <form id="claim-form">
+                <label>Tu nombre
+                  <input type="text" name="name" required maxlength="120" autocomplete="name" />
+                </label>
+                <label>Tu teléfono
+                  <input type="tel" name="phone" required maxlength="30" autocomplete="tel" />
+                </label>
+                <div class="modal-actions">
+                  <button type="button" class="btn btn-secondary" id="claim-cancel">Cancelar</button>
+                  <button type="submit" class="btn btn-primary">Confirmar</button>
+                </div>
+              </form>
+            </div>
+          </div>`;
+
+        const backdrop = root.querySelector('.modal-backdrop') as HTMLElement;
+        backdrop.addEventListener('click', (e) => {
+          if (e.target === backdrop) root.innerHTML = '';
+        });
+        ($('#claim-cancel') as HTMLButtonElement).addEventListener('click', () => (root.innerHTML = ''));
+        ($('#claim-form') as HTMLFormElement).addEventListener('submit', async (e) => {
+          e.preventDefault();
+          const fd = new FormData(e.target as HTMLFormElement);
+          const name = String(fd.get('name') || '').trim();
+          const phone = String(fd.get('phone') || '').trim();
+          if (!name || !phone) return;
+          try {
+            const res = await fetch(`/api/gifts/${gift.id}/claim`, {
+              method: 'POST',
+              headers: { 'Content-Type': 'application/json' },
+              body: JSON.stringify({ name, phone }),
+            });
+            if (res.status === 409) {
+              toast('Alguien ya reservó este regalo 😊');
+            } else if (!res.ok) {
+              toast('No se pudo reservar, intenta de nuevo');
+            } else {
+              const data = await res.json();
+              const tokens = loadTokens();
+              tokens[gift.id] = data.claim_token;
+              saveTokens(tokens);
+              toast('¡Listo! Quedó reservado 💕');
+            }
+            root.innerHTML = '';
+            await loadGifts();
+          } catch {
+            toast('No se pudo reservar, intenta de nuevo');
+          }
+        });
+        (root.querySelector('input[name="name"]') as HTMLInputElement).focus();
+      }
+
+      async function releaseGift(id: number) {
+        const tokens = loadTokens();
+        const token = tokens[id];
+        if (!token) return;
+        if (!confirm('¿Liberar este regalo para que otro pueda llevarlo?')) return;
+        try {
+          const res = await fetch(`/api/gifts/${id}/claim`, {
+            method: 'DELETE',
+            headers: { 'X-Claim-Token': token },
+          });
+          if (res.ok) {
+            delete tokens[id];
+            saveTokens(tokens);
+            toast('Regalo liberado');
+          } else {
+            toast('No se pudo liberar el regalo');
+          }
+          await loadGifts();
+        } catch {
+          toast('No se pudo liberar el regalo');
+        }
+      }
+
+      // ---------- rsvp ----------
+      $('#rsvp-form')!.addEventListener('submit', async (e) => {
+        e.preventDefault();
+        const form = e.target as HTMLFormElement;
+        const fd = new FormData(form);
+        if (String(fd.get('website') || '')) return;
+        const attending = String(fd.get('attending') || 'yes') === 'yes';
+        const msg = $('#rsvp-msg') as HTMLElement;
+        msg.className = 'form-msg';
+        msg.textContent = '';
+        try {
+          const res = await fetch('/api/rsvps', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+              name: String(fd.get('name') || '').trim(),
+              phone: String(fd.get('phone') || '').trim() || null,
+              attending,
+              guests: attending ? Math.min(10, Math.max(0, Number(fd.get('guests')) || 0)) : 0,
+              message: String(fd.get('message') || '').trim() || null,
+            }),
+          });
+          if (!res.ok) throw new Error();
+          msg.className = 'form-msg ok';
+          msg.textContent = attending
+            ? '¡Gracias! Tu confirmación quedó registrada 💕'
+            : 'Gracias por avisarnos, te mandamos un abrazo enorme.';
+          form.reset();
+        } catch {
+          msg.className = 'form-msg err';
+          msg.textContent = 'No se pudo enviar, intenta de nuevo.';
+        }
+      });
+
+      loadEvent();
+      loadGifts();
+    </script>
+  </body>
+</html>
