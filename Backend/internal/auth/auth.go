@@ -10,6 +10,7 @@ import (
 	"errors"
 	"fmt"
 	"io"
+	"log"
 	"net/http"
 	"strings"
 	"time"
@@ -225,6 +226,7 @@ func (h *Handler) Callback(w http.ResponseWriter, r *http.Request) {
 	sid := newID()
 	exp := time.Now().AddDate(0, 0, h.cfg.SessionDays)
 	if err := h.store.CreateSession(r.Context(), sid, email, role, exp); err != nil {
+		log.Printf("auth: crear sesión para %s falló: %v", email, err)
 		http.Error(w, "error interno", http.StatusInternalServerError)
 		return
 	}

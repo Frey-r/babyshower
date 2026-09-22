@@ -80,6 +80,9 @@ CREATE TABLE IF NOT EXISTS admin_sessions (
 	created_at TIMESTAMPTZ NOT NULL DEFAULT now()
 );
 
+-- columnas añadidas en versiones posteriores (idempotente)
+ALTER TABLE admin_sessions ADD COLUMN IF NOT EXISTS role TEXT NOT NULL DEFAULT 'admin';
+
 CREATE INDEX IF NOT EXISTS admin_sessions_expires_at_idx ON admin_sessions(expires_at);
 `
 
