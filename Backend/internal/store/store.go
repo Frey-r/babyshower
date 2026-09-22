@@ -75,6 +75,7 @@ CREATE TABLE IF NOT EXISTS event_settings (
 CREATE TABLE IF NOT EXISTS admin_sessions (
 	id         TEXT PRIMARY KEY,
 	email      TEXT NOT NULL,
+	role       TEXT NOT NULL DEFAULT 'admin',
 	expires_at TIMESTAMPTZ NOT NULL,
 	created_at TIMESTAMPTZ NOT NULL DEFAULT now()
 );
@@ -385,21 +386,21 @@ func (db *DB) ListRsvps(ctx context.Context) ([]Rsvp, error) {
 
 // ---------- sesiones admin ----------
 
-func (db *DB) CreateSession(ctx context.Context, id, email string, expires time.Time) error {
+func (db *DB) CreateSession(ctx context.Context, id, email, role string, expires time.Time) error {
 	_, err := db.pool.Exec(ctx,
-		`INSERT INTO admin_sessions (id, email, expires_at) VALUES ($1, $2, $3)`,
-		id, strings.ToLower(strings.TrimSpace(email)), expires)
+		`INSERT INTO admin_sessions (id, email, role, expires_at) VALUES ($1, $2, $3, $4)`,
+		id, strings.ToLower(strings.TrimSpace(email)), strings.ToLower(strings.TrimSpace(role)), expires)
 	return err
 }
 
-func (db *DB) GetSession(ctx context.Context, id string) (string, error) {
-	var email string
+func (db *DB) GetSession(ctx context.Context, id string) (string, string, error) {
+	var email, role string
 	err := db.pool.QueryRow(ctx,
-		`SELECT email FROM admin_sessions WHERE id = $1 AND expires_at > now()`, id).Scan(&email)
+		`SELECT email, role FROM admin_sessions WHERE id = $1 AND expires_at > now()`, id).Scan(&email, &role)
 	if errors.Is(err, pgx.ErrNoRows) {
-		return "", ErrNotFound
+		return "", "", ErrNotFound
 	}
-	return strings.ToLower(email), err
+	return strings.ToLower(email), strings.ToLower(role), err
 }
 
 func (db *DB) DeleteSession(ctx context.Context, id string) error {

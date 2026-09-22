@@ -28,6 +28,7 @@ type fakeStore struct {
 
 type sessionRow struct {
 	email string
+	role  string
 	exp   time.Time
 }
 
@@ -126,17 +127,17 @@ func (f *fakeStore) CreateRsvp(_ context.Context, in store.RsvpInput) error {
 
 func (f *fakeStore) ListRsvps(context.Context) ([]store.Rsvp, error) { return f.rsvps, nil }
 
-func (f *fakeStore) CreateSession(_ context.Context, id, email string, exp time.Time) error {
-	f.sessions[id] = sessionRow{email: strings.ToLower(email), exp: exp}
+func (f *fakeStore) CreateSession(_ context.Context, id, email, role string, exp time.Time) error {
+	f.sessions[id] = sessionRow{email: strings.ToLower(email), role: strings.ToLower(role), exp: exp}
 	return nil
 }
 
-func (f *fakeStore) GetSession(_ context.Context, id string) (string, error) {
+func (f *fakeStore) GetSession(_ context.Context, id string) (string, string, error) {
 	s, ok := f.sessions[id]
 	if !ok || time.Now().After(s.exp) {
-		return "", store.ErrNotFound
+		return "", "", store.ErrNotFound
 	}
-	return s.email, nil
+	return s.email, s.role, nil
 }
 
 func (f *fakeStore) DeleteSession(_ context.Context, id string) error {
@@ -253,7 +254,7 @@ func TestPublicEndpoints(t *testing.T) {
 func loginAs(t *testing.T, f *fakeStore, email string) *http.Cookie {
 	t.Helper()
 	sid := "sess-" + email
-	_ = f.CreateSession(context.Background(), sid, email, time.Now().Add(time.Hour))
+	_ = f.CreateSession(context.Background(), sid, email, "admin", time.Now().Add(time.Hour))
 	return &http.Cookie{Name: "bsh_admin", Value: sid}
 }
 

@@ -190,7 +190,7 @@ import '../../styles/global.css';
           if (!r.ok) { window.location.href = '/api/auth/login'; return; }
           const me = await r.json();
           const span = document.getElementById('me-email') as HTMLElement;
-          if (span) span.textContent = 'Sesión: ' + me.email;
+          if (span) span.textContent = 'Sesión: ' + me.email + ' · ' + (me.role || 'admin');
           const btn = document.getElementById('logout-btn') as HTMLButtonElement;
           if (btn) btn.style.display = 'inline-block';
         } catch {

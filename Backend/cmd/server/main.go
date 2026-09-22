@@ -67,7 +67,7 @@ func main() {
 		if authCfg == nil {
 			log.Printf("escuchando en :%s (admin sin protección)", port)
 		} else {
-			log.Printf("escuchando en :%s (oauth con %d correo(s))", port, len(authCfg.AllowedEmails))
+			log.Printf("escuchando en :%s (oauth con %d usuario(s))", port, len(authCfg.Users))
 		}
 		if err := srv.ListenAndServe(); err != nil && !errors.Is(err, http.ErrServerClosed) {
 			log.Fatalf("servir: %v", err)

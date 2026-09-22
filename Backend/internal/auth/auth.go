@@ -20,24 +20,31 @@ import (
 
 // SessionStore es el contrato para guardar y recuperar sesiones admin.
 type SessionStore interface {
-	CreateSession(ctx context.Context, id, email string, expires time.Time) error
-	GetSession(ctx context.Context, id string) (email string, err error)
+	CreateSession(ctx context.Context, id, email, role string, expires time.Time) error
+	GetSession(ctx context.Context, id string) (email, role string, err error)
 	DeleteSession(ctx context.Context, id string) error
+}
+
+// SessionInfo resume la sesión activa.
+type SessionInfo struct {
+	Email string `json:"email"`
+	Role  string `json:"role"`
 }
 
 // Config agrupa los parámetros de OAuth.
 type Config struct {
-	OAuth         *oauth2.Config
-	AllowedEmails []string
-	SessionDays   int
-	CookieSecure  bool
+	OAuth       *oauth2.Config
+	Users       map[string]string // email -> rol
+	SessionDays int
+	CookieSecure bool
 }
 
 // Load carga la configuración desde variables de entorno.
 //
 //	GOOGLE_CLIENT_ID, GOOGLE_CLIENT_SECRET -> credenciales OAuth
-//	GOOGLE_REDIRECT_URL -> URL absoluta del callback
-//	ADMIN_EMAILS        -> lista separada por comas de correos permitidos
+//	GOOGLE_REDIRECT_URL                    -> URL absoluta del callback
+//	ADMIN_USERS                            -> "email:rol,email:rol" (rol por usuario)
+//	ADMIN_EMAILS                           -> "email,email" (compatibilidad; rol=admin)
 //
 // Devuelve (nil, nil) si OAuth no está configurado (admin abierto, sólo
 // para el setup inicial).
@@ -45,20 +52,43 @@ func Load(getenv func(string) string) (*Config, error) {
 	cid := getenv("GOOGLE_CLIENT_ID")
 	cs := getenv("GOOGLE_CLIENT_SECRET")
 	ru := strings.TrimSpace(getenv("GOOGLE_REDIRECT_URL"))
-	allowed := []string{}
-	for _, e := range strings.Split(getenv("ADMIN_EMAILS"), ",") {
-		if e = strings.ToLower(strings.TrimSpace(e)); e != "" {
-			allowed = append(allowed, e)
+
+	users := map[string]string{}
+	if raw := strings.TrimSpace(getenv("ADMIN_USERS")); raw != "" {
+		for _, entry := range strings.Split(raw, ",") {
+			entry = strings.TrimSpace(entry)
+			if entry == "" {
+				continue
+			}
+			parts := strings.SplitN(entry, ":", 2)
+			email := strings.ToLower(strings.TrimSpace(parts[0]))
+			role := "admin"
+			if len(parts) == 2 {
+				role = strings.ToLower(strings.TrimSpace(parts[1]))
+			}
+			if email != "" && role != "" {
+				users[email] = role
+			}
 		}
 	}
-	if cid == "" && cs == "" && len(allowed) == 0 {
+	if raw := strings.TrimSpace(getenv("ADMIN_EMAILS")); raw != "" {
+		for _, e := range strings.Split(raw, ",") {
+			e = strings.ToLower(strings.TrimSpace(e))
+			if e == "" || users[e] != "" {
+				continue
+			}
+			users[e] = "admin"
+		}
+	}
+
+	if cid == "" && cs == "" && len(users) == 0 {
 		return nil, nil
 	}
 	if cid == "" || cs == "" {
 		return nil, errors.New("GOOGLE_CLIENT_ID y GOOGLE_CLIENT_SECRET son requeridos cuando OAuth está habilitado")
 	}
-	if len(allowed) == 0 {
-		return nil, errors.New("ADMIN_EMAILS debe contener al menos un correo")
+	if len(users) == 0 {
+		return nil, errors.New("ADMIN_USERS o ADMIN_EMAILS debe contener al menos un usuario")
 	}
 	if ru == "" {
 		ru = "http://localhost:8080/api/auth/callback"
@@ -71,9 +101,9 @@ func Load(getenv func(string) string) (*Config, error) {
 			Scopes:       []string{"openid", "email", "profile"},
 			Endpoint:     google.Endpoint,
 		},
-		AllowedEmails: allowed,
-		SessionDays:   7,
-		CookieSecure:  strings.HasPrefix(ru, "https://"),
+		Users:        users,
+		SessionDays:  7,
+		CookieSecure: strings.HasPrefix(ru, "https://"),
 	}, nil
 }
 
@@ -186,20 +216,14 @@ func (h *Handler) Callback(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	email = strings.ToLower(strings.TrimSpace(email))
-	ok := false
-	for _, e := range h.cfg.AllowedEmails {
-		if e == email {
-			ok = true
-			break
-		}
-	}
+	role, ok := h.cfg.Users[email]
 	if !ok {
 		http.Error(w, "acceso denegado para "+email, http.StatusForbidden)
 		return
 	}
 	sid := newID()
 	exp := time.Now().AddDate(0, 0, h.cfg.SessionDays)
-	if err := h.store.CreateSession(r.Context(), sid, email, exp); err != nil {
+	if err := h.store.CreateSession(r.Context(), sid, email, role, exp); err != nil {
 		http.Error(w, "error interno", http.StatusInternalServerError)
 		return
 	}
@@ -227,25 +251,25 @@ func (h *Handler) Logout(w http.ResponseWriter, r *http.Request) {
 }
 
 func (h *Handler) Me(w http.ResponseWriter, r *http.Request) {
-	email, ok := h.currentSession(r)
+	info, ok := h.currentSession(r)
 	if !ok {
 		http.Error(w, "no autenticado", http.StatusUnauthorized)
 		return
 	}
 	w.Header().Set("Content-Type", "application/json")
-	_ = json.NewEncoder(w).Encode(map[string]string{"email": email})
+	_ = json.NewEncoder(w).Encode(SessionInfo{Email: info.Email, Role: info.Role})
 }
 
-func (h *Handler) currentSession(r *http.Request) (string, bool) {
+func (h *Handler) currentSession(r *http.Request) (SessionInfo, bool) {
 	c, err := r.Cookie(h.cookieName)
 	if err != nil || c.Value == "" {
-		return "", false
+		return SessionInfo{}, false
 	}
-	email, err := h.store.GetSession(r.Context(), c.Value)
+	email, role, err := h.store.GetSession(r.Context(), c.Value)
 	if err != nil {
-		return "", false
+		return SessionInfo{}, false
 	}
-	return email, true
+	return SessionInfo{Email: email, Role: role}, true
 }
 
 // Gate protege /admin* y /api/admin*. Sin sesión redirige a
