@@ -175,10 +175,18 @@ import '../../styles/global.css';
 
     <div id="modal-root"></div>
 
+    <div id="auth-banner" style="display:none; max-width:980px; margin:0 auto 16px; padding:14px 18px; background:#FDF1E5; border:1px solid #D9AFA6; border-radius:6px; color:#7A1F2B; font-family:'Quicksand',sans-serif; font-weight:600; font-size:14px;"></div>
+
     <script>
       (async () => {
         try {
           const r = await fetch('/api/auth/me', { credentials: 'include' });
+          if (r.status === 404) {
+            const banner = document.getElementById('auth-banner') as HTMLElement;
+            banner.style.display = 'block';
+            banner.textContent = '⚠️ Google OAuth no configurado: el panel está abierto. Configura GOOGLE_CLIENT_ID, GOOGLE_CLIENT_SECRET y ADMIN_EMAILS en el servidor antes de producción.';
+            return;
+          }
           if (!r.ok) { window.location.href = '/api/auth/login'; return; }
           const me = await r.json();
           const span = document.getElementById('me-email') as HTMLElement;
