@@ -15,6 +15,7 @@ import (
 	"sync"
 	"time"
 
+	"babyshower/backend/internal/auth"
 	"babyshower/backend/internal/store"
 )
 
@@ -34,35 +35,36 @@ type Store interface {
 }
 
 type Server struct {
-	store        Store
-	dist         fs.FS
-	fingerprints map[string]struct{}
-	limiter      *limiter
+	store   Store
+	dist    fs.FS
+	authn   *auth.Handler
+	limiter *limiter
 }
 
-// New construye el servidor. fingerprints son los SHA256 (hex) de los
-// certificados de cliente permitidos para el admin; si está vacío no se
-// exige el header (modo desarrollo local).
-func New(s Store, fingerprints []string, dist fs.FS) *Server {
-	set := make(map[string]struct{}, len(fingerprints))
-	for _, f := range fingerprints {
-		f = strings.ToLower(strings.TrimSpace(f))
-		if f != "" {
-			set[f] = struct{}{}
-		}
-	}
-	return &Server{store: s, dist: dist, fingerprints: set, limiter: newLimiter(10, time.Minute)}
+// New construye el servidor. authn puede ser nil (admin abierto) durante
+// el setup inicial; si es nil no se protege /admin.
+func New(s Store, authn *auth.Handler, dist fs.FS) *Server {
+	return &Server{store: s, dist: dist, authn: authn, limiter: newLimiter(10, time.Minute)}
 }
 
 func (s *Server) Handler() http.Handler {
 	mux := http.NewServeMux()
 
+	if s.authn != nil {
+		mux.HandleFunc("GET /api/auth/login", s.authn.Login)
+		mux.HandleFunc("GET /api/auth/callback", s.authn.Callback)
+		mux.HandleFunc("POST /api/auth/logout", s.authn.Logout)
+		mux.HandleFunc("GET /api/auth/me", s.authn.Me)
+	}
+
+	// api pública
 	mux.HandleFunc("GET /api/event", s.handleGetEvent)
 	mux.HandleFunc("GET /api/gifts", s.handleListGifts)
 	mux.HandleFunc("POST /api/gifts/{id}/claim", s.handleClaimGift)
 	mux.HandleFunc("DELETE /api/gifts/{id}/claim", s.handleReleaseGift)
 	mux.HandleFunc("POST /api/rsvps", s.handleCreateRsvp)
 
+	// api admin
 	mux.HandleFunc("GET /api/admin/gifts", s.handleListGiftsAdmin)
 	mux.HandleFunc("POST /api/admin/gifts", s.handleCreateGift)
 	mux.HandleFunc("PUT /api/admin/gifts/{id}", s.handleUpdateGift)
@@ -78,30 +80,10 @@ func (s *Server) Handler() http.Handler {
 
 	mux.HandleFunc("/", s.serveStatic)
 
-	return s.adminGate(mux)
-}
-
-// ---------- middleware ----------
-
-// adminGate exige el header Cf-Client-Cert-Sha256 (reenviado por Cloudflare
-// cuando la conexión presenta un certificado de cliente válido) para toda
-// ruta /admin o /api/admin, si hay fingerprints configurados.
-func (s *Server) adminGate(next http.Handler) http.Handler {
-	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		if len(s.fingerprints) == 0 {
-			next.ServeHTTP(w, r)
-			return
-		}
-		p := r.URL.Path
-		if p == "/admin" || strings.HasPrefix(p, "/admin/") || strings.HasPrefix(p, "/api/admin") {
-			fp := strings.ToLower(strings.TrimSpace(r.Header.Get("Cf-Client-Cert-Sha256")))
-			if _, ok := s.fingerprints[fp]; !ok {
-				http.Error(w, "forbidden", http.StatusForbidden)
-				return
-			}
-		}
-		next.ServeHTTP(w, r)
-	})
+	if s.authn != nil {
+		return s.authn.Gate(mux)
+	}
+	return mux
 }
 
 // ---------- helpers ----------
@@ -154,9 +136,9 @@ func validURL(u *string) bool {
 // ---------- rate limiting (por IP, POST) ----------
 
 type limiter struct {
-	mu    sync.Mutex
-	hits  map[string][]time.Time
-	limit int
+	mu     sync.Mutex
+	hits   map[string][]time.Time
+	limit  int
 	window time.Duration
 }
 
@@ -302,8 +284,12 @@ func (s *Server) handleCreateRsvp(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	phone := trimPtr(body.Phone)
-	if phone != nil && (len(*phone) == 0 || len(*phone) > 30) {
+	if phone != nil && len(*phone) == 0 {
 		phone = nil
+	}
+	if phone != nil && len(*phone) > 30 {
+		writeErr(w, http.StatusBadRequest, "teléfono demasiado largo (máx 30)")
+		return
 	}
 	guests := body.Guests
 	if !body.Attending {
@@ -314,10 +300,12 @@ func (s *Server) handleCreateRsvp(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	message := trimPtr(body.Message)
-	if message != nil {
-		if len(*message) == 0 || len(*message) > 500 {
-			message = nil
-		}
+	if message != nil && len(*message) > 500 {
+		writeErr(w, http.StatusBadRequest, "mensaje demasiado largo (máx 500)")
+		return
+	}
+	if message != nil && len(*message) == 0 {
+		message = nil
 	}
 	err := s.store.CreateRsvp(r.Context(), store.RsvpInput{
 		Name: name, Phone: phone, Attending: body.Attending, Guests: guests, Message: message,

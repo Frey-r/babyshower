@@ -6,6 +6,7 @@ import (
 	"encoding/hex"
 	"errors"
 	"fmt"
+	"strings"
 	"time"
 
 	"github.com/jackc/pgx/v5"
@@ -70,6 +71,15 @@ CREATE TABLE IF NOT EXISTS event_settings (
 	place         TEXT NOT NULL DEFAULT '',
 	rsvp_deadline DATE
 );
+
+CREATE TABLE IF NOT EXISTS admin_sessions (
+	id         TEXT PRIMARY KEY,
+	email      TEXT NOT NULL,
+	expires_at TIMESTAMPTZ NOT NULL,
+	created_at TIMESTAMPTZ NOT NULL DEFAULT now()
+);
+
+CREATE INDEX IF NOT EXISTS admin_sessions_expires_at_idx ON admin_sessions(expires_at);
 `
 
 var seedGifts = []struct {
@@ -371,4 +381,33 @@ func (db *DB) ListRsvps(ctx context.Context) ([]Rsvp, error) {
 		out = append(out, r)
 	}
 	return out, rows.Err()
+}
+
+// ---------- sesiones admin ----------
+
+func (db *DB) CreateSession(ctx context.Context, id, email string, expires time.Time) error {
+	_, err := db.pool.Exec(ctx,
+		`INSERT INTO admin_sessions (id, email, expires_at) VALUES ($1, $2, $3)`,
+		id, strings.ToLower(strings.TrimSpace(email)), expires)
+	return err
+}
+
+func (db *DB) GetSession(ctx context.Context, id string) (string, error) {
+	var email string
+	err := db.pool.QueryRow(ctx,
+		`SELECT email FROM admin_sessions WHERE id = $1 AND expires_at > now()`, id).Scan(&email)
+	if errors.Is(err, pgx.ErrNoRows) {
+		return "", ErrNotFound
+	}
+	return strings.ToLower(email), err
+}
+
+func (db *DB) DeleteSession(ctx context.Context, id string) error {
+	_, err := db.pool.Exec(ctx, `DELETE FROM admin_sessions WHERE id = $1`, id)
+	return err
+}
+
+func (db *DB) PurgeExpiredSessions(ctx context.Context) error {
+	_, err := db.pool.Exec(ctx, `DELETE FROM admin_sessions WHERE expires_at < now()`)
+	return err
 }

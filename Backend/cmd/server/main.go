@@ -7,11 +7,11 @@ import (
 	"net/http"
 	"os"
 	"os/signal"
-	"strings"
 	"syscall"
 	"time"
 
 	"babyshower/backend/internal/api"
+	"babyshower/backend/internal/auth"
 	"babyshower/backend/internal/store"
 	"babyshower/backend/internal/web"
 )
@@ -30,15 +30,6 @@ func main() {
 		log.Fatal("DATABASE_URL es requerido")
 	}
 
-	var fingerprints []string
-	if v := os.Getenv("ADMIN_CERT_FINGERPRINTS"); v != "" {
-		for _, f := range strings.Split(v, ",") {
-			if f = strings.TrimSpace(f); f != "" {
-				fingerprints = append(fingerprints, f)
-			}
-		}
-	}
-
 	ctx, stop := signal.NotifyContext(context.Background(), os.Interrupt, syscall.SIGTERM)
 	defer stop()
 
@@ -51,15 +42,33 @@ func main() {
 	if err := db.Migrate(ctx); err != nil {
 		log.Fatalf("migrar: %v", err)
 	}
+	if err := db.PurgeExpiredSessions(ctx); err != nil {
+		log.Printf("purgar sesiones: %v", err)
+	}
+
+	authCfg, err := auth.Load(os.Getenv)
+	if err != nil {
+		log.Fatalf("auth: %v", err)
+	}
+	var authn *auth.Handler
+	if authCfg == nil {
+		log.Println("ADVERTENCIA: Google OAuth no configurado; /admin queda accesible sin login. Configura GOOGLE_CLIENT_ID/SECRET y ADMIN_EMAILS antes de ir a producción.")
+	} else {
+		authn = auth.New(authCfg, db)
+	}
 
 	srv := &http.Server{
 		Addr:              ":" + port,
-		Handler:           api.New(db, fingerprints, web.Dist()).Handler(),
+		Handler:           api.New(db, authn, web.Dist()).Handler(),
 		ReadHeaderTimeout: 10 * time.Second,
 	}
 
 	go func() {
-		log.Printf("escuchando en :%s", port)
+		if authCfg == nil {
+			log.Printf("escuchando en :%s (admin sin protección)", port)
+		} else {
+			log.Printf("escuchando en :%s (oauth con %d correo(s))", port, len(authCfg.AllowedEmails))
+		}
 		if err := srv.ListenAndServe(); err != nil && !errors.Is(err, http.ErrServerClosed) {
 			log.Fatalf("servir: %v", err)
 		}

@@ -103,7 +103,11 @@ import '../../styles/global.css';
     <div class="admin-wrap">
       <div class="admin-head">
         <h1>Admin · Abby</h1>
-        <a href="/">← Volver a la invitación</a>
+        <div style="display:flex; align-items:center; gap:14px;">
+          <span id="me-email" class="muted" style="font-size:13px;"></span>
+          <button id="logout-btn" class="btn btn-secondary btn-sm" style="display:none;">Cerrar sesión</button>
+          <a href="/">← Invitación</a>
+        </div>
       </div>
 
       <div class="tabs">
@@ -172,6 +176,25 @@ import '../../styles/global.css';
     <div id="modal-root"></div>
 
     <script>
+      (async () => {
+        try {
+          const r = await fetch('/api/auth/me', { credentials: 'include' });
+          if (!r.ok) { window.location.href = '/api/auth/login'; return; }
+          const me = await r.json();
+          const span = document.getElementById('me-email') as HTMLElement;
+          if (span) span.textContent = 'Sesión: ' + me.email;
+          const btn = document.getElementById('logout-btn') as HTMLButtonElement;
+          if (btn) btn.style.display = 'inline-block';
+        } catch {
+          window.location.href = '/api/auth/login';
+        }
+      })();
+
+      document.getElementById('logout-btn')?.addEventListener('click', async () => {
+        await fetch('/api/auth/logout', { method: 'POST', credentials: 'include' });
+        window.location.href = '/api/auth/login';
+      });
+
       const $ = (s: string) => document.querySelector(s) as HTMLElement;
 
       // tabs
